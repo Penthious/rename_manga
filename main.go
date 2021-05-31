@@ -7,11 +7,11 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
 	"syscall"
-	"regexp"
 )
 
 func main() {
@@ -24,50 +24,56 @@ func main() {
 
 func forever() {
 
-	os.Setenv("GOOS", "windows")
-	os.Setenv("GOARCH", "amd64")
-	fmt.Println("Type in name of series:")
-	in := bufio.NewReader(os.Stdin)
-	name, err := in.ReadString('\n')
-	if err != nil {
-		fmt.Printf("Error reading string: %v\n", err)
-		return
-	}
-	re := regexp.MustCompile(`\r?\n`)
-	name = re.ReplaceAllString(name, "")
+	for {
+		os.Setenv("GOOS", "windows")
+		os.Setenv("GOARCH", "amd64")
+		fmt.Println("Type in name of series:")
+		in := bufio.NewReader(os.Stdin)
+		name, err := in.ReadString('\n')
+		if err != nil {
+			fmt.Printf("Error reading string: %v\n", err)
+			return
+		}
+		re := regexp.MustCompile(`\r?\n`)
+		name = re.ReplaceAllString(name, "")
 
-	fmt.Println("Type in how many volumes:")
-	in = bufio.NewReader(os.Stdin)
-	volumes, err := in.ReadString('\n')
-	if err != nil {
-		fmt.Printf("Error reading string: %v\n", err)
-		return
-	}
-	fmt.Println(volumes)
-	volumes = re.ReplaceAllString(volumes, "")
-	volumesInt, err := strconv.ParseInt(volumes, 10, 64)
-	if err != nil {
-		fmt.Printf("Error converting int %v\n", err)
-		return
+		fmt.Println("Type in how many volumes:")
+		in = bufio.NewReader(os.Stdin)
+		volumes, err := in.ReadString('\n')
+		if err != nil {
+			fmt.Printf("Error reading string: %v\n", err)
+			return
+		}
+		volumes = re.ReplaceAllString(volumes, "")
+		volumesInt, err := strconv.ParseInt(volumes, 10, 64)
+		if err != nil {
+			fmt.Printf("Error converting int %v\n", err)
+			return
+		}
+
+		createDir(name)
+		for i := 1; i <= int(volumesInt); i++ {
+			base := fmt.Sprintf("%s/%s_v%d", name, name, i)
+			spread := fmt.Sprintf("%s_v%d_spreads", name, i)
+			scans := fmt.Sprintf("%s_v%d_scans", name, i)
+			createDir(base)
+			createDir(base + "/" + spread)
+			createDir(base + "/" + scans)
+		}
+
+		err = renameScans(name)
+
+		if err != nil {
+			fmt.Println("Err processing scans: ", err)
+		}
+
+		fmt.Println("\n\n\n\nAll done, to close hit ctrl+c")
+		fmt.Println("\nIf you want to continue just redo the previous steps")
+		fmt.Println("==================================")
+		fmt.Println("==================================")
+		fmt.Println("==================================")
 	}
 
-	createDir(name)
-	for i := 1; i <= int(volumesInt); i++ {
-		base := fmt.Sprintf("%s/%s_v%d", name, name, i)
-		spread := fmt.Sprintf("%s_v%d_spreads", name, i)
-		scans := fmt.Sprintf("%s_v%d_scans", name, i)
-		createDir(base)
-		createDir(base + "/" + spread)
-		createDir(base + "/" + scans)
-	}
-
-	err = renameScans(name)
-
-	if err != nil {
-		fmt.Println("Err processing scans: ", err)
-	}
-
-	fmt.Println("All done, to close hit ctrl+c")
 }
 
 func createDir(dir string) {
